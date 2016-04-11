@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+
+function architectures { ARCHS=( "$@" ); }
+function codename      { CODENAME="$@"; }
+function origin        { ORIGIN="$@"; }
+function label         { LABEL="$@"; }
+function description   { DESC="$@"; }
+
+function temp { tempfile --prefix "$1-" --suffix '.debrepo'; }
+function hash { "${1}sum" "$2" | cut -d ' ' -f 1; }
+
+function release.hashes {
+	declare -- ALG FILE
+	for ALG in "$@"; do
+		declare -n REF="FILES_$ALG"
+		echo "${ALG}:"
+		for FILE in "${FILES[@]}"; do
+			echo " ${REF["$FILE"]} ${FILES_SIZE["$FILE"]} $FILE"
+		done
+	done
+}
+
+function link_hash {
+	local -- FILE="$1"
+	local -- DIR="$2"
+	shift 2
+	local -- ALG D_ALG REL_FILE="../../$(basename "$FILE")"
+	for ALG in "$@"; do
+		declare -n REF="FILES_$ALG"
+		D_ALG="$DIR/by-hash/$ALG"
+		mkdir -p "$D_ALG"
+		ln --force -s "$REL_FILE" "$D_ALG/${REF["$FILE"]}"
+	done
+}
+
+function release.sect_arch {
+	local -- D_SECTION="$1" ARCH="$2"
+	local -- F_UNSORTED F_SORTED SHA256 D_RELS D_RELEASE D_ARCH
+	F_UNSORTED="$(temp u)"
+	F_SORTED="$(temp s)"
+	apt-ftparchive --arch "$ARCH" --db "$DB" packages "$D_SECTION/packages" > "$F_UNSORTED"
+	apt-sortpkgs "$F_UNSORTED" > "$F_SORTED" # alas, it can't operate on STDIN
+	rm -f "$F_UNSORTED"
+	SHA256="$(hash sha256 "$F_SORTED")"
+	D_RELS="releases/$ARCH"
+	D_RELEASE="$D_RELS/$SHA256"
+	if [[ -e "$D_SECTION/$D_RELEASE" ]]; then continue; fi
+	mkdir -p "$D_SECTION/$D_RELEASE"
+	mv --force "$F_SORTED" "$D_SECTION/$D_RELEASE/Packages"
+	gzip < "$D_SECTION/$D_RELEASE/Packages" > "$D_SECTION/$D_RELEASE/Packages.gz"
+	D_ARCH="$D_SECTION/binary-$ARCH"
+	mkdir -p "$D_ARCH"
+	ln --force -s "../$D_RELEASE/Packages" "../$D_RELEASE/Packages.gz" "$D_ARCH"
+}
+
+function release.distribution {
+	local -a ARCHS=( ) FILES=( )
+	local -- ORIGIN LABEL CODENAME DESC
+	local -- DIST_CONF="$1"
+	source "$DIST_CONF"
+	[[ "$ARCHS" ]]    || ARCHS=( amd64 i386 )
+	[[ "$ORIGIN" ]]   || ORIGIN="$DIST"
+	[[ "$LABEL" ]]    || LABEL="$DIST"
+	[[ "$CODENAME" ]] || CODENAME="$DIST"
+	[[ "$DESC" ]]     || DESC="$DIST"
+	local -- D_DIST="$(dirname "$DIST_CONF")"
+	local -- DIST="$(basename "$D_DIST")"
+	local -A SECTIONS FILES_SIZE FILES_MD5Sum FILES_SHA1 FILES_SHA256
+	local -- SECTION ARCH D_ARCH FILE F_TEMP
+
+	while read; do SECTIONS["$(basename "$REPLY")"]="$REPLY"; done < <(find "$D_DIST" -mindepth 1 -maxdepth 1 -type d)
+
+	for SECTION in "${!SECTIONS[@]}"; do
+		for ARCH in "${ARCHS[@]}"; do
+			release.sect_arch "${SECTIONS[$SECTION]}" "$ARCH"
+			D_ARCH="$SECTION/binary-$ARCH"
+			for FILE in "$D_ARCH/Packages" "$D_ARCH/Packages.gz"; do
+				FILES+=( "$FILE" )
+				FILES_SIZE["$FILE"]="$(stat --dereference --format='%s' "$D_DIST/$FILE")"
+				FILES_MD5Sum["$FILE"]="$(hash md5 "$D_DIST/$FILE")"
+				FILES_SHA1["$FILE"]="$(hash sha1 "$D_DIST/$FILE")"
+				FILES_SHA256["$FILE"]="$(hash sha256 "$D_DIST/$FILE")"
+				link_hash "$FILE" "$D_DIST/$D_ARCH" MD5Sum SHA1 SHA256
+			done
+		done
+	done
+
+	F_TEMP="$(temp R)"
+	cat > "$F_TEMP" <<-EOH
+		Origin: $ORIGIN
+		Label: $LABEL
+		Suite: $DIST
+		Codename: $CODENAME
+		Date: $(date --rfc-2822)
+		Architectures: ${ARCHS[*]}
+		Components: ${!SECTIONS[*]}
+		Description: $DESC
+		Acquire-By-Hash: yes
+	EOH
+
+	release.hashes MD5Sum SHA1 SHA256 >> "$F_TEMP"
+# link Packages here
+	mv --force "$F_TEMP" "$D_DIST/Release"
+	HOME=/root gpg --batch --yes --detach-sign --armor --output "$D_DIST/Release.gpg" "$D_DIST/Release"
+	HOME=/root gpg --batch --yes --sign --clearsign --armor --output "$D_DIST/InRelease" "$D_DIST/Release"
+}
+
+# --------------------------------------------------------------------
+# Let's get dangerous!
+
+(
+	if declare -n zomg &> /dev/null; then
+		: 'okay!'
+	else
+		echo 'This script requires Bash version 4.3 or higher' >& 2
+		exit 1
+	fi
+) || exit 1
+
+D_ROOT="$1"
+if [[ -z "$D_ROOT" ]]; then
+	echo "Usage: $(basename "$0") DIRNAME"
+	exit
+fi
+
+DB="$D_ROOT/cache.db"
+D_PUB="$D_ROOT/pub"
+
+(
+	cd "$D_PUB" # we need that for correct paths with apt-ftparchive packages
+	find dists -mindepth 2 -maxdepth 2 -type f -name config | while read; do release.distribution "$REPLY"; done
+)

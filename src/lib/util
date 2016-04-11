@@ -1,0 +1,9 @@
+#!/syntax/bash
+
+function Util.temp {
+	tempfile --prefix "$1-" --suffix '.debrepo'
+}
+
+function Util.hash {
+	"${1}sum" "$2" | cut -d ' ' -f 1
+}

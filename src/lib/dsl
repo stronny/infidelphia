@@ -1,0 +1,21 @@
+#!/syntax/bash
+
+function architectures {
+	ARCHS=( "$@" )
+}
+
+function codename {
+	CODENAME="$@"
+}
+
+function origin {
+	ORIGIN="$@"
+}
+
+function label {
+	LABEL="$@"
+}
+
+function description {
+	DESC="$@"
+}
