@@ -1,0 +1,9 @@
+Package: infidelphia
+Version: $VERSION
+Section: admin
+Priority: extra
+Architecture: all
+Depends: bash (>= 4.3)
+Maintainer: stronny@celestia.ru
+Description: Because this user in not happy with aptly.
+Homepage: https://github.com/stronny/infidelphia
