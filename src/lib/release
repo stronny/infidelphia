@@ -1,0 +1,32 @@
+#!/syntax/bash
+
+function Release.hashes {
+	declare -- ALG FILE
+	for ALG in "$@"; do
+		declare -n REF="FILES_$ALG"
+		echo "${ALG}:"
+		for FILE in "${FILES[@]}"; do
+			echo " ${REF["$FILE"]} ${FILES_SIZE["$FILE"]} $FILE"
+		done
+	done
+}
+
+function Release.section_arch {
+	local -- D_SECTION="$1" ARCH="$2"
+	local -- F_UNSORTED F_SORTED SHA256 D_RELS D_RELEASE D_ARCH
+	F_UNSORTED="$(temp u)"
+	F_SORTED="$(temp s)"
+	apt-ftparchive --arch "$ARCH" --db "$DB" packages "$D_SECTION/packages" > "$F_UNSORTED"
+	apt-sortpkgs "$F_UNSORTED" > "$F_SORTED" # alas, it can't operate on STDIN
+	rm -f "$F_UNSORTED"
+	SHA256="$(hash sha256 "$F_SORTED")"
+	D_RELS="releases/$ARCH"
+	D_RELEASE="$D_RELS/$SHA256"
+	if [[ -e "$D_SECTION/$D_RELEASE" ]]; then continue; fi
+	mkdir -p "$D_SECTION/$D_RELEASE"
+	mv --force "$F_SORTED" "$D_SECTION/$D_RELEASE/Packages"
+	gzip < "$D_SECTION/$D_RELEASE/Packages" > "$D_SECTION/$D_RELEASE/Packages.gz"
+	D_ARCH="$D_SECTION/binary-$ARCH"
+	mkdir -p "$D_ARCH"
+	ln --force -s "../$D_RELEASE/Packages" "../$D_RELEASE/Packages.gz" "$D_ARCH"
+}

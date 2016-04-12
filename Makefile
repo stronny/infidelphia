@@ -1,6 +1,6 @@
 SHELL=/usr/bin/env bash
 ME := infidelphia
-LIBS := dsl util
+LIBS := version dsl util main release release_distro
 PREFIX ?= /usr/local
 BIN := ${PREFIX}/bin
 LIB := ${PREFIX}/lib
@@ -27,7 +27,7 @@ deb:
 	env
 	PREFIX=${DEB}/usr $(MAKE)
 	install -d ${DEB}/DEBIAN
-	source src/lib/version && export VERSION && envsubst < debian/control > ${DEB}/DEBIAN/control
+	source src/lib/version && export VERSION && envsubst < control > ${DEB}/DEBIAN/control
 	dpkg-deb --build ${DEB} .
 	rm ${DEB}/DEBIAN/control
 	rmdir --ignore-fail-on-non-empty ${DEB}/DEBIAN

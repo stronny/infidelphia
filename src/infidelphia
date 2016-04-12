@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+declare -- ME="$(basename "$0")"
+declare -- DN_ME="$(dirname "$0")"
+declare -- MODE
+
+while read; do source "$REPLY"; done < <(find "$DN_ME/../lib/$ME" -type f)
+
+if declare -p -f "Main.$1" &> /dev/null; then
+	MODE="$1"
+	shift
+	"Main.$MODE" "$@"
+else
+	Util.usage!
+	exit
+fi

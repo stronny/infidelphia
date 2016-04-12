@@ -1,0 +1,53 @@
+#!/syntax/bash
+
+function Release.distribution {
+	local -a ARCHS=( ) FILES=( )
+	local -- ORIGIN LABEL CODENAME DESC
+	local -- DIST_CONF="$1"
+	source "$DIST_CONF"
+	[[ "$ARCHS" ]]    || ARCHS=( amd64 i386 )
+	[[ "$ORIGIN" ]]   || ORIGIN="$DIST"
+	[[ "$LABEL" ]]    || LABEL="$DIST"
+	[[ "$CODENAME" ]] || CODENAME="$DIST"
+	[[ "$DESC" ]]     || DESC="$DIST"
+	local -- D_DIST="$(dirname "$DIST_CONF")"
+	local -- DIST="$(basename "$D_DIST")"
+	local -A SECTIONS FILES_SIZE FILES_MD5Sum FILES_SHA1 FILES_SHA256
+	local -- SECTION ARCH D_ARCH FILE F_TEMP
+
+	while read; do SECTIONS["$(basename "$REPLY")"]="$REPLY"; done < <(find "$D_DIST" -mindepth 1 -maxdepth 1 -type d)
+
+	for SECTION in "${!SECTIONS[@]}"; do
+		for ARCH in "${ARCHS[@]}"; do
+			release.sect_arch "${SECTIONS[$SECTION]}" "$ARCH"
+			D_ARCH="$SECTION/binary-$ARCH"
+			for FILE in "$D_ARCH/Packages" "$D_ARCH/Packages.gz"; do
+				FILES+=( "$FILE" )
+				FILES_SIZE["$FILE"]="$(stat --dereference --format='%s' "$D_DIST/$FILE")"
+				FILES_MD5Sum["$FILE"]="$(hash md5 "$D_DIST/$FILE")"
+				FILES_SHA1["$FILE"]="$(hash sha1 "$D_DIST/$FILE")"
+				FILES_SHA256["$FILE"]="$(hash sha256 "$D_DIST/$FILE")"
+				link_hash "$FILE" "$D_DIST/$D_ARCH" MD5Sum SHA1 SHA256
+			done
+		done
+	done
+
+	F_TEMP="$(temp R)"
+	cat > "$F_TEMP" <<-EOH
+		Origin: $ORIGIN
+		Label: $LABEL
+		Suite: $DIST
+		Codename: $CODENAME
+		Date: $(date --rfc-2822)
+		Architectures: ${ARCHS[*]}
+		Components: ${!SECTIONS[*]}
+		Description: $DESC
+		Acquire-By-Hash: yes
+	EOH
+
+	release.hashes MD5Sum SHA1 SHA256 >> "$F_TEMP"
+# link Packages here
+	mv --force "$F_TEMP" "$D_DIST/Release"
+	HOME=/root gpg --batch --yes --detach-sign --armor --output "$D_DIST/Release.gpg" "$D_DIST/Release"
+	HOME=/root gpg --batch --yes --sign --clearsign --armor --output "$D_DIST/InRelease" "$D_DIST/Release"
+}

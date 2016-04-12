@@ -7,3 +7,25 @@ function Util.temp {
 function Util.hash {
 	"${1}sum" "$2" | cut -d ' ' -f 1
 }
+
+function Util.bad_bash? {
+	(
+		declare -n zomg &> /dev/null || exit 1
+	)
+}
+
+function Util.usage! {
+	cat <<-EOH
+		Usage: $ME put    ROOT DISTRIB COMPONENT FILENAME...
+		       $ME update ROOT
+		       $ME import ROOT
+		       $ME daemon ROOT
+		       $ME rotate ROOT
+	EOH
+}
+
+function Util.arg1_or_usage {
+	[[ "$1" ]] && return 0
+	Util.usage!
+	return 1
+}
