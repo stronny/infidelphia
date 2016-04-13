@@ -10,17 +10,17 @@ function Util.hash {
 
 function Util.bad_bash? {
 	(
-		declare -n zomg &> /dev/null || exit 1
+		declare -n zomg &> /dev/null && exit 1
 	)
 }
 
 function Util.usage! {
 	cat <<-EOH
 		Usage: $ME put    ROOT DISTRIB COMPONENT FILENAME...
+		       $ME mkrepo ROOT DISTRIB...
 		       $ME update ROOT
-		       $ME import ROOT
-		       $ME daemon ROOT
 		       $ME rotate ROOT
+		       $ME daemon ROOT
 	EOH
 }
 

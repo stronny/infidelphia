@@ -6,6 +6,11 @@ declare -- MODE
 
 while read; do source "$REPLY"; done < <(find "$DN_ME/../lib/$ME" -type f)
 
+if Util.bad_bash?; then
+	echo 'This program requires bash >= 4.3' >& 2
+	exit 1
+fi
+
 if declare -p -f "Main.$1" &> /dev/null; then
 	MODE="$1"
 	shift

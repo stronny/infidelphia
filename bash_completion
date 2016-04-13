@@ -1,0 +1,37 @@
+function _infidelphia {
+	declare -- cur root fn
+	declare -a words toks
+	_get_comp_words_by_ref cur words
+	declare -i wordc="${#words[@]}"
+	if (( wordc > 2 )); then
+		case "${words[1]}" in
+			mkrepo|update|rotate) (( wordc < 4 )) && _filedir -d;;
+			put)
+				if (( wordc < 4 )); then
+					_filedir -d
+				elif (( wordc < 5 )); then
+					root="${words[2]}"
+					__expand_tilde_by_ref root
+					while read; do
+						fn="$(dirname "$REPLY")"
+						toks+=( $(basename "$fn") )
+					done < <(find "$root/pub/dists" -mindepth 2 -maxdepth 2 -type f -name config)
+					COMPREPLY=( $(compgen -W "${toks[*]}" -- "$cur") )
+				elif (( wordc < 6 )); then
+					root="${words[2]}"
+					__expand_tilde_by_ref root
+					while read; do
+						toks+=( $(basename "$REPLY") )
+					done < <(find "$root/pub/dists/${words[3]}" -mindepth 1 -maxdepth 1 -type d)
+					COMPREPLY=( $(compgen -W "${toks[*]}" -- "$cur") )
+				else
+					_filedir
+				fi
+			;;
+		esac
+	else
+		COMPREPLY=( $(compgen -W 'update rotate put' -- "$cur") )
+	fi
+}
+
+complete -F _infidelphia infidelphia

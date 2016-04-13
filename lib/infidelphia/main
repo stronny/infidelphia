@@ -1,0 +1,42 @@
+#!/syntax/bash
+
+function Main.mkrepo {
+	declare -- ROOT="$1" DIST
+	shift
+	Util.arg1_or_usage "$@" || return 1
+	mkdir -p "$ROOT/pool"
+	for DIST in "$@"; do
+		mkdir -p "$ROOT/pub/dists/$DIST"
+		set -C
+		cat > "$ROOT/pub/dists/$DIST/config" <<-EOH
+			#!/syntax/bash
+			#
+			#architectures i386 amd64
+			#codename      $DIST
+			#origin        'you@example.com'
+			#label         'example.com/debian'
+			#description   'Example.com public repo'
+		EOH
+	done
+}
+
+function Main.update {
+	declare -- ROOT="$1"
+	Util.arg1_or_usage "$@" || return 1
+}
+
+function Main.daemon {
+	declare -- ROOT="$1"
+	Util.arg1_or_usage "$@" || return 1
+}
+
+function Main.rotate {
+	declare -- ROOT="$1"
+	Util.arg1_or_usage "$@" || return 1
+}
+
+function Main.put {
+	declare -- ROOT="$1" DISTRIB="$2" COMPONENT="$3"
+	shift 3
+	Util.arg1_or_usage "$@" || return 1
+}
