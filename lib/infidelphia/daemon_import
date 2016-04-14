@@ -1,0 +1,28 @@
+#!/syntax/bash
+
+function Daemon.import {
+	declare -- ROOT="$1" DISTRIB="$2" COMPONENT="$3" FN="$4"
+	if [[ -z "$DISTRIB" ]]; then
+		Util.error 'no dist specified'
+		return 1
+	elif [[ ! -f "$ROOT/pub/dists/$DISTRIB/config" ]]; then
+		Util.error "unknown dist $DISTRIB"
+		return 1
+	fi
+
+	if [[ -z "$COMPONENT" ]]; then
+		Util.error 'no component specified'
+		return 1
+	elif [[ ! -d "$ROOT/pub/dists/$DISTRIB/$COMPONENT" ]]; then
+		Util.error "unknown component $DISTRIB/$COMPONENT"
+		return 1
+	fi
+
+	if [[ -z "$FN" ]]; then
+		Util.error 'no file specified'
+		return 1
+	fi
+
+	sleep 2
+	echo 'OK imported'
+}

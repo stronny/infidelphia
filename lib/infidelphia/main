@@ -23,20 +23,31 @@ function Main.mkrepo {
 function Main.update {
 	declare -- ROOT="$1"
 	Util.arg1_or_usage "$@" || return 1
+	Util.send "$ROOT" update
+}
+
+function Main.put {
+	declare -- ROOT="$1" DISTRIB="$2" COMPONENT="$3" FN
+	shift 3
+	Util.arg1_or_usage "$@" || return 1
+	for FN in "$@"; do Util.send "$ROOT" import "$DISTRIB" "$COMPONENT" "$FN"; done
 }
 
 function Main.daemon {
-	declare -- ROOT="$1"
+	declare -- ROOT="$1" CMD DISTRIB COMPONENT FN JUNK
 	Util.arg1_or_usage "$@" || return 1
+	coproc nc -nlkU "$ROOT/socket"
+	while read CMD DISTRIB COMPONENT FN JUNK; do
+		case "$CMD" in
+			update) Daemon.update "$ROOT";;
+			import) Daemon.import "$ROOT" "$DISTRIB" "$COMPONENT" "$FN";;
+			*) Util.error "unknown command: $CMD";;
+		esac
+	done <& "${COPROC[0]}" >& "${COPROC[1]}"
+	wait
 }
 
 function Main.rotate {
 	declare -- ROOT="$1"
-	Util.arg1_or_usage "$@" || return 1
-}
-
-function Main.put {
-	declare -- ROOT="$1" DISTRIB="$2" COMPONENT="$3"
-	shift 3
 	Util.arg1_or_usage "$@" || return 1
 }

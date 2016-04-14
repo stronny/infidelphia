@@ -1,6 +1,6 @@
 SHELL=/usr/bin/env bash
 ME := infidelphia
-LIBS := version dsl util main release release_distro
+LIBS := version dsl util main release release_distro daemon_update daemon_import
 PREFIX ?= /usr/local
 BIN := ${PREFIX}/bin
 LIB := ${PREFIX}/lib

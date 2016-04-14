@@ -29,3 +29,19 @@ function Util.arg1_or_usage {
 	Util.usage!
 	return 1
 }
+
+function Util.error {
+	echo "FAIL $@"
+	echo "FAIL $@" >& 2
+}
+
+function Util.send {
+	declare -- ROOT="$1"
+	shift
+	coproc nc -n -q -1 -U "$ROOT/socket"
+	echo "$@" >& "${COPROC[1]}"
+	read <& "${COPROC[0]}"
+	kill -HUP "$COPROC_PID"
+	wait &> /dev/null
+	echo "$REPLY"
+}
